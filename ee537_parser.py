@@ -71,12 +71,12 @@ class LinearDependentSource:
 
 class VoltageControlSource:
     def __init__(self, np, nm, ncp, ncm, value, code):
-        self.code = code    #Could be G or E
-        self.np = np
-        self.nm = nm
-        self.ncp = ncp
-        self.ncm = ncm
-        self.value = value
+        self.code = str(code)    #Could be G or E
+        self.np = int(np)
+        self.nm = int(nm)
+        self.ncp = int(ncp)
+        self.ncm = int(ncm)
+        self.value = int(value)
         node_tracker.append(self.np)
         node_tracker.append(self.nm)
         node_tracker.append(self.ncp)
@@ -84,53 +84,129 @@ class VoltageControlSource:
 
     def create_sub_matrix_string(self):
         if("G" in self.code):
-            sub_matrix = np.zeros((2, 2), dtype=np.dtype('a16'))
-            sub_matrix[0][0] = self.code
-            sub_matrix[0][1] = "-1" + self.code
-            sub_matrix[1][0] = "-1" + self.code
-            sub_matrix[1][1] = self.code
-
-            if(self.np == 0):
-                sub_matrix[0][0] = 0
-                sub_matrix[0][1] = 0
             if(self.nm == 0):
-                sub_matrix[1][0] = 0
-                sub_matrix[1][1] = 0
-            if(self.ncp == 0):
-                sub_matrix[0][0] = 0
-                sub_matrix[1][0] = 0
-            if(self.ncm == 0):
-                sub_matrix[0][1] = 0
-                sub_matrix[1][1] = 0
-            self.sub_matrix_string = sub_matrix
-            return sub_matrix
+                if(self.ncp == 0 and self.ncm != 0):
+                    sub_matrix = np.zeros((1, 1), dtype=np.dtype('a16'))
+                    sub_matrix[0][0] = "-1" + self.code
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm == 0):
+                    sub_matrix = np.zeros((1, 1), dtype=np.dtype('a16'))
+                    sub_matrix[0][0] = self.code
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm != 0):
+                    diff = abs(self.ncp - self.ncm) + 1
+                    sub_matrix = np.zeros((1, diff), dtype=np.dtype('a16'))
+                    sub_matrix[0][0] = self.code
+                    sub_matrix[0][abs(self.ncp - self.ncm)] = "-1" + self.code
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+            elif(self.np == 0):
+                if(self.ncp == 0 and self.ncm != 0):
+                    sub_matrix = np.zeros((1, 1), dtype=np.dtype('a16'))
+                    sub_matrix[0][0] = self.code
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm == 0):
+                    sub_matrix = np.zeros((1, 1), dtype=np.dtype('a16'))
+                    sub_matrix[0][0] = "-1" + self.code
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm != 0):
+                    diff = abs(self.ncp - self.ncm) + 1
+                    sub_matrix = np.zeros((1, diff), dtype=np.dtype('a16'))
+                    sub_matrix[0][0] = "-1" + self.code
+                    sub_matrix[0][abs(self.ncp - self.ncm)] = self.code
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+            else:
+                diff = abs(self.np - self.nm) + 1
+                if(self.ncp == 0 and self.ncm != 0):
+                    sub_matrix = np.zeros((diff, 1), dtype=np.dtype('a16'))
+                    sub_matrix[0][0] = "-1" + self.code
+                    sub_matrix[abs(self.np - self.nm)][0] = self.code
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm == 0):
+                    sub_matrix = np.zeros((diff, 1), dtype=np.dtype('a16'))
+                    sub_matrix[0][0] = self.code
+                    sub_matrix[abs(self.np - self.nm)][0] = "-1" + self.code
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm != 0):
+                    sub_matrix = np.zeros((diff, diff), dtype=np.dtype('a16'))
+                    sub_matrix[0][0] = self.code
+                    sub_matrix[0][abs(self.ncp - self.ncm)] = "-1" + self.code
+                    sub_matrix[0][abs(self.ncp - self.ncm)] = "-1" + self.code
+                    sub_matrix[abs(self.ncp - self.ncm)][abs(self.ncp - self.ncm)] = self.code
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
         
         else:
             pass
     
+
     def create_sub_matrix(self):
         if("G" in self.code):
-            sub_matrix = np.zeros((2, 2))
-            sub_matrix[0][0] = self.value
-            sub_matrix[0][1] = -1*self.value
-            sub_matrix[1][0] = -1*self.value
-            sub_matrix[1][1] = self.value
-
-            if(self.np == 0):
-                sub_matrix[0][0] = 0
-                sub_matrix[0][1] = 0
             if(self.nm == 0):
-                sub_matrix[1][0] = 0
-                sub_matrix[1][1] = 0
-            if(self.ncp == 0):
-                sub_matrix[0][0] = 0
-                sub_matrix[1][0] = 0
-            if(self.ncm == 0):
-                sub_matrix[0][1] = 0
-                sub_matrix[1][1] = 0
-            self.sub_matrix = sub_matrix
-            return sub_matrix
-        
+                if(self.ncp == 0 and self.ncm != 0):
+                    sub_matrix = np.zeros((1, 1))
+                    sub_matrix[0][0] = -1*self.value
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm == 0):
+                    sub_matrix = np.zeros((1, 1))
+                    sub_matrix[0][0] = self.value
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm != 0):
+                    diff = abs(self.ncp - self.ncm) + 1
+                    sub_matrix = np.zeros((1, diff))
+                    sub_matrix[0][0] = self.value
+                    sub_matrix[0][abs(self.ncp - self.ncm)] = -1*self.value
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+            elif(self.np == 0):
+                if(self.ncp == 0 and self.ncm != 0):
+                    sub_matrix = np.zeros((1, 1))
+                    sub_matrix[0][0] = self.value
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm == 0):
+                    sub_matrix = np.zeros((1, 1))
+                    sub_matrix[0][0] = -1*self.value
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm != 0):
+                    diff = abs(self.ncp - self.ncm) + 1
+                    sub_matrix = np.zeros((1, diff))
+                    sub_matrix[0][0] = -1*self.value
+                    sub_matrix[0][abs(self.ncp - self.ncm)] = self.value
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+            else:
+                diff = abs(self.np - self.nm) + 1
+                if(self.ncp == 0 and self.ncm != 0):
+                    sub_matrix = np.zeros((diff, 1))
+                    sub_matrix[0][0] = -1*self.value
+                    sub_matrix[abs(self.np - self.nm)][0] = self.value
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm == 0):
+                    sub_matrix = np.zeros((diff, 1))
+                    sub_matrix[0][0] = self.value
+                    sub_matrix[abs(self.np - self.nm)][0] = -1*self.value
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
+                if(self.ncp != 0 and self.ncm != 0):
+                    sub_matrix = np.zeros((diff, diff))
+                    sub_matrix[0][0] = self.value
+                    sub_matrix[0][abs(self.ncp - self.ncm)] = -1*self.value
+                    sub_matrix[0][abs(self.ncp - self.ncm)] = -1*self.value
+                    sub_matrix[abs(self.ncp - self.ncm)][abs(self.ncp - self.ncm)] = self.value
+                    self.sub_matrix = sub_matrix
+                    return sub_matrix
         else:
             pass
 
@@ -278,7 +354,6 @@ if __name__ == "__main__":
     test_string = "R1   1   2   1000\nI1   0   1   2\nR2    2   3   1000\nR3    3   0   1000"
     lines = test_string.split("\n")
 
-    matrix = []
     array = []
     for line in lines:
         if line:
