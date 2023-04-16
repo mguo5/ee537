@@ -1,4 +1,16 @@
 import numpy as np
+from scipy.linalg import lu_factor, lu_solve
+
+class LUSolver:
+    def __init__(self, A, b):
+        self.A = A
+        self.b = b
+
+    def lu_solve(self):
+        lu, piv = lu_factor(self.A)
+        x = lu_solve((lu, piv), self.b)
+
+        return x
 
 class Circuit:
     def __init__(self, i, j):
@@ -44,7 +56,7 @@ class Circuit:
     """
         Dealing with Independent Voltages for LHS
     """
-    def independent_volt_update(self, code, i, j):
+    def independent_volt_update(self, code, i, j, value):
         if(code in self.unique_voltages):
             index = self.unique_voltages.index(code) + self.i - 1
         else:
@@ -62,6 +74,8 @@ class Circuit:
             self.lhs[j - 1][index] = -1
             self.lhs[index][i - 1] = 1
             self.lhs[index][j - 1] = -1
+
+        self.rhs[index][0] = value
 
     """
         Dealing with the RHS of the equation
@@ -127,7 +141,6 @@ if __name__ == "__main__":
                 elif element.startswith(".text"):
                     save_matrix_txt = True
 
-    
     for r in resistors:
         code = r[0]
         np = int(r[1])
@@ -147,7 +160,7 @@ if __name__ == "__main__":
         nm = int(v[2])
         value = int(v[3])
 
-        c.independent_volt_update(code, np, nm)
+        c.independent_volt_update(code, np, nm, value)
 
     for i in currents:
         code = i[0]
@@ -176,3 +189,6 @@ if __name__ == "__main__":
     lhs = c.return_lhs()
     print("=======RHS Matrix======")
     rhs = c.return_rhs()
+
+    l = LUSolver(lhs, rhs)
+    print(l.lu_solve())
