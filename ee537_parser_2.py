@@ -4,40 +4,64 @@ class Circuit:
     def __init__(self, i, j):
         self.i = i
         self.j = j
+        self.unique_voltages = []
+
+    def create_lhs(self):
+        self.lhs = np.zeros((self.i, self.j))
 
     """
         Dealing wiht the Yn part of the matrix
     """
-    def create_yn(self):
-        self.yn = np.zeros((self.i, self.j))
 
-    def resistor_update_yn_zero(self, value, i, j):
-        self.yn[i - 1][j - 1] += 1/value
+    def resistor_update_lhs_zero(self, value, i, j):
+        self.lhs[i - 1][j - 1] += 1/value
 
-    def resistor_update_yn(self, value, i, j):
-        self.yn[i - 1][i - 1] += 1/value
-        self.yn[j - 1][j - 1] += 1/value
-        self.yn[i - 1][j - 1] += -1/value
-        self.yn[j - 1][i - 1] += -1/value 
+    def resistor_update_lhs(self, value, i, j):
+        self.lhs[i - 1][i - 1] += 1/value
+        self.lhs[j - 1][j - 1] += 1/value
+        self.lhs[i - 1][j - 1] += -1/value
+        self.lhs[j - 1][i - 1] += -1/value 
 
-    def voltage_control_current_update_yn(self, value, i, j, k, l):
+    def voltage_control_current_update_lhs(self, value, i, j, k, l):
         if(i != 0 and k == 0):
-            self.yn[i - 1][l - 1] = -1 * value
+            self.lhs[i - 1][l - 1] = -1 * value
         if(i != 0 and l == 0):
-            self.yn[i - 1][k - 1] = value
+            self.lhs[i - 1][k - 1] = value
         if(j != 0 and k == 0):
-            self.yn[j - 1][l - 1] = value
+            self.lhs[j - 1][l - 1] = value
         if(j != 0 and l == 0):
-            self.yn[j - 1][k - 1] = -1 * value
+            self.lhs[j - 1][k - 1] = -1 * value
         if(i != 0 and j != 0 and l != 0 and k != 0):
-            self.yn[i - 1][k - 1] = value
-            self.yn[i - 1][l - 1] = -1 * value
-            self.yn[j - 1][k - 1] = -1 * value
-            self.yn[j - 1][l - 1] = value
+            self.lhs[i - 1][k - 1] = value
+            self.lhs[i - 1][l - 1] = -1 * value
+            self.lhs[j - 1][k - 1] = -1 * value
+            self.lhs[j - 1][l - 1] = value
 
-    def return_yn(self):
-        print(self.yn)
-        return self.yn
+    def return_lhs(self):
+        print(self.lhs)
+        return self.lhs
+
+    """
+        Dealing with Independent Voltages for LHS
+    """
+    def independent_volt_update(self, code, i, j):
+        if(code in self.unique_voltages):
+            index = self.unique_voltages.index(code) + self.i - 1
+        else:
+            self.unique_voltages.append(code)
+            index = self.unique_voltages.index(code) + self.i - 1
+        
+        if(i == 0):
+            self.lhs[j - 1][index] = -1
+            self.lhs[index][j - 1] = -1
+        if(j == 0):
+            self.lhs[i - 1][index] = 1
+            self.lhs[index][i - 1] = 1
+        if(i != 0 and j != 0):
+            self.lhs[i - 1][index] = 1
+            self.lhs[j - 1][index] = -1
+            self.lhs[index][i - 1] = 1
+            self.lhs[index][j - 1] = -1
 
     """
         Dealing with the RHS of the equation
@@ -59,54 +83,96 @@ class Circuit:
 
 if __name__ == "__main__":
     node_amount = 3
-    test_string = "R1   1   2   1000\nI1   0   1   2\nR2    2   3   1000\nR3    3   0   1000"
-    lines = test_string.split("\n")
+    num_volt = 1
+    save_matrix_txt = False
 
-    c = Circuit(node_amount, node_amount)
-    c.create_yn()
+    c = Circuit(node_amount + num_volt, node_amount + num_volt)
+    c.create_lhs()
     c.create_rhs()
 
-    array = []
-    for line in lines:
-        if line:
-            row = line.split()
-            array = row[:6]
+    resistors = []
+    voltages = []
+    currents = []
+    vccs = []
 
-            if array[0][0] == 'R':
-                code = array[0]
-                np = int(array[1])
-                nm = int(array[2])
-                value = int(array[3])
+    with open("test_file.txt", "r") as netlist_file:
+        # Read the contents of the file into a string variable
+        netlist = netlist_file.read()
+        lines = netlist.split("\n")
+        for line in lines:
+            if line.strip() != "":
+                parts = line.split()
+                element = None
+                node_values = None
+                element_values = None
+                if(len(parts) == 4):
+                    element = parts[0]
+                    nodes_values = parts[1:3]
+                    element_value = parts[3]
+                elif(len(parts) == 6):
+                    element = parts[0]
+                    nodes_values = parts[1:5]
+                    element_value = parts[5]
+                elif(len(parts) == 1):
+                    element = parts[0]
+                
+                if element.startswith("R"):
+                    resistors.append([element] + nodes_values + [element_value])
+                elif element.startswith("V"):
+                    voltages.append([element] + nodes_values + [element_value])
+                elif element.startswith("I"):
+                    currents.append([element] + nodes_values + [element_value])
+                elif element.startswith("G"):
+                    vccs.append([element] + nodes_values + [element_value])
+                elif element.startswith(".text"):
+                    save_matrix_txt = True
 
-                if(np == 0):
-                    c.resistor_update_yn_zero(value, nm, nm)
-                elif(nm == 0):
-                    c.resistor_update_yn_zero(value, np, np)
-                else:
-                    c.resistor_update_yn(value, np, nm)
-            
-            if array[0][0] == "I":
-                code = array[0]
-                np = int(array[1])
-                nm = int(array[2])
-                value = int(array[3])
+    
+    for r in resistors:
+        code = r[0]
+        np = int(r[1])
+        nm = int(r[2])
+        value = int(r[3])
 
-                if(np == 0):
-                    c.i_current_update_rhs_zero(value, nm, nm)
-                elif(nm == 0):
-                    c.i_current_update_rhs_zero(value, np, np)
-                else:
-                    c.i_current_update_rhs(value, np, nm)
+        if(np == 0):
+            c.resistor_update_lhs_zero(value, nm, nm)
+        elif(nm == 0):
+            c.resistor_update_lhs_zero(value, np, np)
+        else:
+            c.resistor_update_lhs(value, np, nm)
+    
+    for v in voltages:
+        code = v[0]
+        np = int(v[1])
+        nm = int(v[2])
+        value = int(v[3])
 
-            if array[0][0] == "G":
-                code = array[0]
-                np = int(array[1])
-                nm = int(array[2])
-                ncp = int(array[3])
-                ncm = int(array[4])
-                value = int(array[5])
+        c.independent_volt_update(code, np, nm)
 
-                c.voltage_control_current_update_yn(value, np, nm, ncp, ncm)
+    for i in currents:
+        code = i[0]
+        np = int(i[1])
+        nm = int(i[2])
+        value = int(i[3])
 
-    c.return_yn()
-    c.return_rhs()
+        if(np == 0):
+            c.i_current_update_rhs_zero(value, nm, nm)
+        elif(nm == 0):
+            c.i_current_update_rhs_zero(value, np, np)
+        else:
+            c.i_current_update_rhs(value, np, nm)
+
+    for g in vccs:
+        code = g[0]
+        np = int(g[1])
+        nm = int(g[2])
+        ncp = int(g[3])
+        ncm = int(g[4])
+        value = int(g[5])
+
+        c.voltage_control_current_update_lhs(value, np, nm, ncp, ncm)
+    
+    print("=======LHS Matrix======")
+    lhs = c.return_lhs()
+    print("=======RHS Matrix======")
+    rhs = c.return_rhs()
