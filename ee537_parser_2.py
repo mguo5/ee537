@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.linalg import lu_factor, lu_solve
+import sys
 
 class LUSolver:
     def __init__(self, A, b):
@@ -17,6 +18,8 @@ class Circuit:
         self.i = i
         self.j = j
         self.unique_voltages = []
+        self.unique_voltage_i = []
+        self.unique_voltage_j = []
 
     def create_lhs(self):
         self.lhs = np.zeros((self.i, self.j))
@@ -49,6 +52,40 @@ class Circuit:
             self.lhs[j - 1][k - 1] = -1 * value
             self.lhs[j - 1][l - 1] = value
 
+    def current_control_voltage_update_lhs(self, value, i, j, volt):
+        ncm = 0
+        ncp = 0
+        if(volt in self.unique_voltages):
+            index = self.unique_voltages.index(code) + self.i - 1
+            ncp = self.unique_voltage_i[self.unique_voltages.index(volt)]
+            ncm = self.unique_voltage_j[self.unique_voltages.index(volt)]
+        else:
+            return
+
+        if(i == 0 and ncp == 0):
+            self.lhs[j - 1][index] = -1 * value
+            self.lhs[ncm - 1][index] = -1
+            self.lhs[index][ncm - 1] = -1
+        if(j == 0 and ncp == 0):
+            self.lhs[i - 1][index] = value
+            self.lhs[ncm - 1][index] = 1
+            self.lhs[index][ncm - 1] = -1
+        if(i == 0 and ncm == 0):
+            self.lhs[j - 1][index] = -1 * value
+            self.lhs[ncp - 1][index] = 1
+            self.lhs[index][ncp - 1] = 1
+        if(j == 0 and ncp == 0):
+            self.lhs[i - 1][index] = value
+            self.lhs[ncm - 1][index] = -1
+            self.lhs[index][ncm - 1] = 1
+        if(i != 0 and j != 0 and ncp != 0 and ncm != 0):
+            self.lhs[i - 1][index] = value
+            self.lhs[j - 1][index] = -1 * value
+            self.lhs[ncp - 1][index] = 1
+            self.lhs[ncp - 1][index] = -1
+            self.lhs[index][ncp - 1] = 1
+            self.lhs[index][ncm - 1] = -1
+
     def return_lhs(self):
         print(self.lhs)
         return self.lhs
@@ -61,6 +98,8 @@ class Circuit:
             index = self.unique_voltages.index(code) + self.i - 1
         else:
             self.unique_voltages.append(code)
+            self.unique_voltage_i.append(i)
+            self.unique_voltage_j.append(j)
             index = self.unique_voltages.index(code) + self.i - 1
         
         if(i == 0):
@@ -108,8 +147,10 @@ if __name__ == "__main__":
     voltages = []
     currents = []
     vccs = []
+    ccvs = []
+    cccs = []
 
-    with open("test_file.txt", "r") as netlist_file:
+    with open("test_file_2.txt", "r") as netlist_file:
         # Read the contents of the file into a string variable
         netlist = netlist_file.read()
         lines = netlist.split("\n")
@@ -119,6 +160,7 @@ if __name__ == "__main__":
                 element = None
                 node_values = None
                 element_values = None
+                volt_ref = None
                 if(len(parts) == 4):
                     element = parts[0]
                     nodes_values = parts[1:3]
@@ -129,6 +171,11 @@ if __name__ == "__main__":
                     element_value = parts[5]
                 elif(len(parts) == 1):
                     element = parts[0]
+                elif(len(parts) == 5):
+                    element = parts[0]
+                    node_values = parts[1:3]
+                    volt_ref = parts[3]
+                    element_value = parts[4]
                 
                 if element.startswith("R"):
                     resistors.append([element] + nodes_values + [element_value])
@@ -138,6 +185,10 @@ if __name__ == "__main__":
                     currents.append([element] + nodes_values + [element_value])
                 elif element.startswith("G"):
                     vccs.append([element] + nodes_values + [element_value])
+                elif element.startswith("F"):
+                    ccvs.append([element] + nodes_values + [volt_ref] + [element_value])
+                elif element.startswith("H"):
+                    cccs.append([element] + nodes_values + [volt_ref] + [element_value])
                 elif element.startswith(".text"):
                     save_matrix_txt = True
 
@@ -179,16 +230,32 @@ if __name__ == "__main__":
         code = g[0]
         np = int(g[1])
         nm = int(g[2])
-        ncp = int(g[3])
-        ncm = int(g[4])
-        value = int(g[5])
+        volt = g[3]
+        value = int(g[4])
 
-        c.voltage_control_current_update_lhs(value, np, nm, ncp, ncm)
+        c.voltage_control_current_update_lhs(value, np, nm, volt)
+
+    for f in ccvs:
+        code = f[0]
+        np = int(f[1])
+        nm = int(f[2])
+        ncp = int(f[3])
+        ncm = int(f[4])
+        value = int(f[5])
+
+
     
+    if save_matrix_txt:
+        f = open("test.out", 'w')
+        sys.stdout = f
     print("=======LHS Matrix======")
     lhs = c.return_lhs()
     print("=======RHS Matrix======")
     rhs = c.return_rhs()
 
+    print("=======LU Decomposition=======")
     l = LUSolver(lhs, rhs)
     print(l.lu_solve())
+
+    if save_matrix_txt:
+        f.close()
