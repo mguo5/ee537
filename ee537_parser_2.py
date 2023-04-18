@@ -52,11 +52,62 @@ class Circuit:
             self.lhs[j - 1][k - 1] = -1 * value
             self.lhs[j - 1][l - 1] = value
 
-    def current_control_voltage_update_lhs(self, value, i, j, volt):
+    def current_control_voltage_update_lhs(self, value, i, j, volt, code):
         ncm = 0
         ncp = 0
         if(volt in self.unique_voltages):
-            index = self.unique_voltages.index(code) + self.i - 1
+            index_j = self.unique_voltages.index(volt) + self.i - 1
+            ncp = self.unique_voltage_i[self.unique_voltages.index(volt)]
+            ncm = self.unique_voltage_j[self.unique_voltages.index(volt)]
+        else:
+            return
+
+        if(code in self.unique_voltages):
+            index_k = self.unique_voltages.index(code) + self.i - 1
+        else:
+            self.unique_voltages.append(code)
+            index_k = self.unique_voltages.index(code) + self.i - 1
+
+        if(i == 0 and ncp == 0):
+            self.lhs[j - 1][index_k] = -1
+            self.lhs[ncm - 1][index_j] = -1
+            self.lhs[index_k][j - 1] = -1
+            self.lhs[index_j][ncm - 1] = -1
+            self.lhs[index_k][index_j] = -1 * value
+        if(j == 0 and ncp == 0):
+            self.lhs[i - 1][index_k] = 1
+            self.lhs[ncm - 1][index_j] = 1
+            self.lhs[index_k][i - 1] = 1
+            self.lhs[index_j][ncm - 1] = 1
+            self.lhs[index_k][index_j] = -1 * value
+        if(i == 0 and ncm == 0):
+            self.lhs[j - 1][index_k] = -1
+            self.lhs[ncp - 1][index_j] = 1
+            self.lhs[index_k][j - 1] = -1
+            self.lhs[index_j][ncp - 1] = 1
+            self.lhs[index_k][index_j] = -1 * value
+        if(j == 0 and ncp == 0):
+            self.lhs[i - 1][index_k] = 1
+            self.lhs[ncm - 1][index_j] = -1
+            self.lhs[index_k][i - 1] = 1
+            self.lhs[index_j][ncm - 1] = -1
+            self.lhs[index_k][index_j] = -1 * value
+        if(i != 0 and j != 0 and ncp != 0 and ncm != 0):
+            self.lhs[i - 1][index_k] = 1
+            self.lhs[ncp - 1][index_j] = 1
+            self.lhs[j - 1][index_k] = -1
+            self.lhs[ncm - 1][index_j] = -1
+            self.lhs[index_k][i - 1] = 1
+            self.lhs[index_j][ncp - 1] = 1
+            self.lhs[index_k][j - 1] = -1
+            self.lhs[index_j][ncm - 1] = -1
+            self.lhs[index_k][index_j] = -1 * value
+        
+    def current_control_current_update_lhs(self, value, i, j, volt):
+        ncm = 0
+        ncp = 0
+        if(volt in self.unique_voltages):
+            index = self.unique_voltages.index(volt) + self.i - 1
             ncp = self.unique_voltage_i[self.unique_voltages.index(volt)]
             ncm = self.unique_voltage_j[self.unique_voltages.index(volt)]
         else:
@@ -239,9 +290,19 @@ if __name__ == "__main__":
         code = f[0]
         np = int(f[1])
         nm = int(f[2])
-        ncp = int(f[3])
-        ncm = int(f[4])
-        value = int(f[5])
+        volt = f[3]
+        value = int(f[4])
+
+        c.current_control_voltage_update_lhs(value, np, nm, volt, code)
+    
+    for h in cccs:
+        code = h[0]
+        np = int(h[1])
+        nm = int(h[2])
+        volt = h[3]
+        value = int(h[4])
+
+        c.current_control_current_update_lhs(value, np, nm, volt)
 
 
     
