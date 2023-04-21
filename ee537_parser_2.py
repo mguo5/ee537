@@ -2,6 +2,17 @@ import numpy as np
 from scipy.linalg import lu_factor, lu_solve
 import sys
 
+
+# TODO: Adding capacitor and inductors
+# Adding capacitor is bascially a resistor in parallel with a current source.
+# The current source will be changing for each delta_t, but the resistor will
+# stay the same. Notice that because of this, the LHS will never be changed, 
+# but there will be a lot of different RHS. However, also notice that the lu_solve
+# takes in self.b, which is the RHS. So, do a for loop to do many different solving
+# for the lu_solve, but the lu_factor will only need to be done once.
+# TLDR: we will have a lot of different RHS due to the different Ieq that is needed,
+# thus we would need to do many different lu_solve for each of the self.b
+
 class LUSolver:
     def __init__(self, A, b):
         self.A = A
@@ -11,6 +22,15 @@ class LUSolver:
         lu, piv = lu_factor(self.A)
         x = lu_solve((lu, piv), self.b)
 
+        return x
+
+    def lu_factor_only(self):
+        lu, piv = lu_factor(self.A)
+        self.lu = lu
+        self.piv = piv
+
+    def lu_solve_only(self, B):
+        x = lu_solve((self.lu, self.piv), B)
         return x
 
 class Circuit:
