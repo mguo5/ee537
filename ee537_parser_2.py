@@ -39,19 +39,22 @@ class Circuit:
 
     def voltage_control_current_update_lhs(self, value, i, j, k, l):
         if(i != 0 and k == 0):
-            self.lhs[i - 1][l - 1] = -1 * value
+            self.lhs[i - 1][l - 1] += value
         if(i != 0 and l == 0):
-            self.lhs[i - 1][k - 1] = value
+            self.lhs[i - 1][k - 1] += -1*value
         if(j != 0 and k == 0):
-            self.lhs[j - 1][l - 1] = value
+            self.lhs[j - 1][l - 1] += -1*value
         if(j != 0 and l == 0):
-            self.lhs[j - 1][k - 1] = -1 * value
+            self.lhs[j - 1][k - 1] += value
         if(i != 0 and j != 0 and l != 0 and k != 0):
-            self.lhs[i - 1][k - 1] = value
-            self.lhs[i - 1][l - 1] = -1 * value
-            self.lhs[j - 1][k - 1] = -1 * value
-            self.lhs[j - 1][l - 1] = value
+            self.lhs[i - 1][k - 1] += value
+            self.lhs[i - 1][l - 1] += -1 * value
+            self.lhs[j - 1][k - 1] += -1 * value
+            self.lhs[j - 1][l - 1] += value
 
+    """
+    Dealing with the B and C parts of the LHS matrix
+    """
     def current_control_voltage_update_lhs(self, value, i, j, volt, code):
         ncm = 0
         ncp = 0
@@ -66,6 +69,8 @@ class Circuit:
             index_k = self.unique_voltages.index(code) + self.i - 1
         else:
             self.unique_voltages.append(code)
+            self.unique_voltage_i.append(i)
+            self.unique_voltage_j.append(j)
             index_k = self.unique_voltages.index(code) + self.i - 1
 
         if(i == 0 and ncp == 0):
@@ -186,8 +191,8 @@ class Circuit:
 
 
 if __name__ == "__main__":
-    node_amount = 3
-    num_volt = 1
+    node_amount = int(sys.argv[1])
+    num_volt = int(sys.argv[2])
     save_matrix_txt = False
 
     c = Circuit(node_amount + num_volt, node_amount + num_volt)
@@ -201,7 +206,7 @@ if __name__ == "__main__":
     ccvs = []
     cccs = []
 
-    with open("test_file_2.txt", "r") as netlist_file:
+    with open(str(sys.argv[3]), "r") as netlist_file:
         # Read the contents of the file into a string variable
         netlist = netlist_file.read()
         lines = netlist.split("\n")
@@ -281,10 +286,11 @@ if __name__ == "__main__":
         code = g[0]
         np = int(g[1])
         nm = int(g[2])
-        volt = g[3]
-        value = int(g[4])
+        ncp = int(g[3])
+        ncm = int(g[4])
+        value = float(g[5])
 
-        c.voltage_control_current_update_lhs(value, np, nm, volt)
+        c.voltage_control_current_update_lhs(value, np, nm, ncp, ncm)
 
     for f in ccvs:
         code = f[0]
@@ -303,8 +309,6 @@ if __name__ == "__main__":
         value = int(h[4])
 
         c.current_control_current_update_lhs(value, np, nm, volt)
-
-
     
     if save_matrix_txt:
         f = open("test.out", 'w')
