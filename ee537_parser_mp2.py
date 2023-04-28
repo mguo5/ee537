@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.linalg import lu_factor, lu_solve
 import sys
+import matplotlib.pyplot as plt
 
 
 # TODO: Adding capacitor and inductors
@@ -199,11 +200,11 @@ class Circuit:
         self.rhs = np.zeros((self.i, 1))
 
     def i_current_update_rhs_zero(self, value, i, j):
-        self.rhs[i - 1][0] += value
+        self.rhs[i - 1][0] = value
 
     def i_current_update_rhs(self, value, i, j):
-        self.rhs[i - 1][0] += value
-        self.rhs[j - 1][0] -= value
+        self.rhs[i - 1][0] = value
+        self.rhs[j - 1][0] = -1*value
     
     def return_rhs(self):
         print(self.rhs)
@@ -213,6 +214,10 @@ class Circuit:
 if __name__ == "__main__":
     node_amount = int(sys.argv[1])
     num_volt = int(sys.argv[2])
+    if(len(sys.argv) > 5):
+        time_finish = float(sys.argv[4])
+        time_resolution = int(sys.argv[5])
+        time_delta = time_finish / time_resolution
     save_matrix_txt = False
 
     c = Circuit(node_amount + num_volt, node_amount + num_volt)
@@ -225,6 +230,11 @@ if __name__ == "__main__":
     vccs = []
     ccvs = []
     cccs = []
+    cap = []
+    ind = []
+
+    capacitor_current_index = None
+    capacitor_div_time = 0
 
     with open(str(sys.argv[3]), "r") as netlist_file:
         # Read the contents of the file into a string variable
@@ -265,6 +275,12 @@ if __name__ == "__main__":
                     ccvs.append([element] + nodes_values + [volt_ref] + [element_value])
                 elif element.startswith("H"):
                     cccs.append([element] + nodes_values + [volt_ref] + [element_value])
+                elif element.startswith("C"):
+                    cap.append([element] + nodes_values + [element_value])
+                    capacitor_div_time = float(element_value)/time_delta
+                    resistors.append([element] + nodes_values + [str(float(1/capacitor_div_time))])
+                    currents.append([element] + nodes_values + [0])
+                    capacitor_current_index = len(currents) - 1
                 elif element.startswith(".text"):
                     save_matrix_txt = True
 
@@ -272,7 +288,7 @@ if __name__ == "__main__":
         code = r[0]
         np = int(r[1])
         nm = int(r[2])
-        value = int(r[3])
+        value = float(r[3])
 
         if(np == 0):
             c.resistor_update_lhs_zero(value, nm, nm)
@@ -293,7 +309,7 @@ if __name__ == "__main__":
         code = i[0]
         np = int(i[1])
         nm = int(i[2])
-        value = int(i[3])
+        value = float(i[3])
 
         if(np == 0):
             c.i_current_update_rhs_zero(value, nm, nm)
@@ -340,7 +356,41 @@ if __name__ == "__main__":
 
     print("=======LU Decomposition=======")
     l = LUSolver(lhs, rhs)
-    print(l.lu_solve())
+    l.lu_factor_only(lhs)
 
+    cap_volt = []
+    # For loop here
+    if len(cap) > 0:
+        for i in range(0, time_resolution):
+            rhs = c.return_rhs()
+            solve_out = l.lu_solve_only(rhs)
+            print(solve_out)
+            print("=======")
+            new_volt = solve_out[1][0]
+            cap_volt.append(new_volt)
+            print(new_volt)
+            currents[capacitor_current_index][3] = new_volt * float(capacitor_div_time)
+            for i in currents:
+                code = i[0]
+                np = int(i[1])
+                nm = int(i[2])
+                value = float(i[3])
+
+                if(np == 0):
+                    c.i_current_update_rhs_zero(value, nm, nm)
+                elif(nm == 0):
+                    c.i_current_update_rhs_zero(value, np, np)
+                else:
+                    c.i_current_update_rhs(value, np, nm)
+    
+        plt.plot(cap_volt)
+        plt.show()
+    else:
+        solve_out = l.lu_solve_only(rhs)
+        print(solve_out)
+        print("=======")
+        print(solve_out[1][0])
+
+    print(currents[0][3])
     if save_matrix_txt:
         f.close()
