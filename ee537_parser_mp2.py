@@ -35,9 +35,10 @@ class LUSolver:
         return x
 
 class Circuit:
-    def __init__(self, i, j):
+    def __init__(self, i, j, num_volt):
         self.i = i
         self.j = j
+        self.num_volt = num_volt
         self.unique_voltages = []
         self.unique_voltage_i = []
         self.unique_voltage_j = []
@@ -172,12 +173,12 @@ class Circuit:
     """
     def independent_volt_update(self, code, i, j, value):
         if(code in self.unique_voltages):
-            index = self.unique_voltages.index(code) + self.i - 1
+            index = self.unique_voltages.index(code) + self.i - self.num_volt
         else:
             self.unique_voltages.append(code)
             self.unique_voltage_i.append(i)
             self.unique_voltage_j.append(j)
-            index = self.unique_voltages.index(code) + self.i - 1
+            index = self.unique_voltages.index(code) + self.i - self.num_volt
         
         if(i == 0):
             self.lhs[j - 1][index] = -1
@@ -220,10 +221,6 @@ if __name__ == "__main__":
         time_delta = time_finish / time_resolution
     save_matrix_txt = False
 
-    c = Circuit(node_amount + num_volt, node_amount + num_volt)
-    c.create_lhs()
-    c.create_rhs()
-
     resistors = []
     voltages = []
     currents = []
@@ -235,6 +232,9 @@ if __name__ == "__main__":
 
     capacitor_current_index = None
     capacitor_div_time = 0
+
+    inductor_current_index = None
+    inductor_div_time = 0
 
     with open(str(sys.argv[3]), "r") as netlist_file:
         # Read the contents of the file into a string variable
@@ -281,9 +281,20 @@ if __name__ == "__main__":
                     resistors.append([element] + nodes_values + [str(float(1/capacitor_div_time))])
                     currents.append([element] + nodes_values + [0])
                     capacitor_current_index = len(currents) - 1
+                elif element.startswith("L"):
+                    ind.append([element] + nodes_values + [element_value])
+                    inductor_div_time = float(element_value)/time_delta
+                    node_amount = node_amount + 1
+                    num_volt = num_volt + 1
+                    resistors.append([element] + [str(node_amount), nodes_values[1]] + [str(inductor_div_time)])
+                    voltages.append([element] + [nodes_values[0], str(node_amount)] + [0])
+                    inductor_current_index = len(voltages) - 1
                 elif element.startswith(".text"):
                     save_matrix_txt = True
 
+    c = Circuit(node_amount + num_volt, node_amount + num_volt, num_volt)
+    c.create_lhs()
+    c.create_rhs()
     for r in resistors:
         code = r[0]
         np = int(r[1])
@@ -301,7 +312,7 @@ if __name__ == "__main__":
         code = v[0]
         np = int(v[1])
         nm = int(v[2])
-        value = int(v[3])
+        value = float(v[3])
 
         c.independent_volt_update(code, np, nm, value)
 
@@ -359,6 +370,7 @@ if __name__ == "__main__":
     l.lu_factor_only(lhs)
 
     cap_volt = []
+    ind_curr = []
     # For loop here
     if len(cap) > 0:
         for i in range(0, time_resolution):
@@ -385,12 +397,34 @@ if __name__ == "__main__":
     
         plt.plot(cap_volt)
         plt.show()
+    elif len(ind) > 0:
+        for i in range(0, time_resolution):
+            rhs = c.return_rhs()
+            solve_out = l.lu_solve_only(rhs)
+            print(solve_out)
+            print("=======")
+            new_volt = solve_out[2][0]
+            new_volt_2 = solve_out[3][0]
+            new_volt_3 = solve_out[1][0]
+            ind_curr.append(float(new_volt - new_volt_2)/(inductor_div_time))
+            voltages[inductor_current_index][3] = float(new_volt - new_volt_3)
+            for v in voltages:
+                code = v[0]
+                np = int(v[1])
+                nm = int(v[2])
+                value = float(v[3])
+
+                c.independent_volt_update(code, np, nm, value)
+        
+        plt.plot(ind_curr)
+        plt.show()
     else:
         solve_out = l.lu_solve_only(rhs)
         print(solve_out)
         print("=======")
         print(solve_out[1][0])
 
+    c.return_lhs()
     print(currents[0][3])
     if save_matrix_txt:
         f.close()
