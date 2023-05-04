@@ -179,7 +179,7 @@ class Circuit:
             self.unique_voltage_i.append(i)
             self.unique_voltage_j.append(j)
             index = self.unique_voltages.index(code) + self.i - self.num_volt
-        
+    
         if(i == 0):
             self.lhs[j - 1][index] = -1
             self.lhs[index][j - 1] = -1
@@ -215,10 +215,12 @@ class Circuit:
 if __name__ == "__main__":
     node_amount = int(sys.argv[1])
     num_volt = int(sys.argv[2])
-    if(len(sys.argv) > 5):
-        time_finish = float(sys.argv[4])
-        time_resolution = int(sys.argv[5])
-        time_delta = time_finish / time_resolution
+    # if(len(sys.argv) > 5):
+    #     time_finish = float(sys.argv[4])
+    #     time_resolution = int(sys.argv[5])
+    #     time_delta = time_finish / time_resolution
+    time_delta = 0
+    time_resolution = 0
     save_matrix_txt = False
 
     resistors = []
@@ -262,9 +264,22 @@ if __name__ == "__main__":
                     node_values = parts[1:3]
                     volt_ref = parts[3]
                     element_value = parts[4]
+                elif(len(parts) == 8):
+                    element = parts[0]
+                    node_values = parts[1:3]
+                    t_delay = parts[4]
+                    t_scale = parts[5]
+                    v_scale = parts[6]
+                    t_period = parts[7]
+                    time_delta = float(t_period) / int(t_scale)
+                    time_resolution = int(t_scale)
+
+
                 
                 if element.startswith("R"):
                     resistors.append([element] + nodes_values + [element_value])
+                elif element.startswith("V") and len(parts) == 8:
+                    voltages.append([element] + node_values + [v_scale])
                 elif element.startswith("V"):
                     voltages.append([element] + nodes_values + [element_value])
                 elif element.startswith("I"):
@@ -406,8 +421,10 @@ if __name__ == "__main__":
             new_volt = solve_out[2][0]
             new_volt_2 = solve_out[3][0]
             new_volt_3 = solve_out[1][0]
-            ind_curr.append(float(new_volt - new_volt_2)/(inductor_div_time))
-            voltages[inductor_current_index][3] = float(new_volt - new_volt_3)
+            curr_val = float(new_volt - new_volt_2)/(2*inductor_div_time)
+            ind_curr.append(curr_val)
+            # ind_curr.append(float(new_volt - new_volt_2))
+            voltages[inductor_current_index][3] = 2*inductor_div_time*curr_val + (new_volt_3)
             for v in voltages:
                 code = v[0]
                 np = int(v[1])
@@ -425,6 +442,5 @@ if __name__ == "__main__":
         print(solve_out[1][0])
 
     c.return_lhs()
-    print(currents[0][3])
     if save_matrix_txt:
         f.close()
