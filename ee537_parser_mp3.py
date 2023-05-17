@@ -3,6 +3,8 @@ from scipy.linalg import lu_factor, lu_solve
 import sys
 import matplotlib.pyplot as plt
 
+import time
+
 class LUSolver:
     def __init__(self, A, b):
         self.A = A
@@ -248,7 +250,8 @@ def find_H_value(my_list):
 
 if __name__ == "__main__":
     
-    time = 1000
+    start_time = time.time()
+    time_res = 100000
 
     branches_list, nodes_list = parse_text_file('test_file_5.txt')
 
@@ -256,33 +259,42 @@ if __name__ == "__main__":
     for branch in branches_list[0]:
         print(branch)
 
-    print(len(branches_list))
     print("\nNodes:")
     for node in nodes_list:
         for line in node:
             print(line)
         print()  # Add an empty line between nodes
-    print(len(nodes_list))
 
-    currents = np.zeros((len(branches_list), time+1))
-    voltages = np.zeros((len(nodes_list), time+1))
+    currents = np.zeros((len(branches_list), time_res+1))
+    voltages = np.zeros((len(nodes_list), time_res+1))
 
-    for i in range(0, time):
-        # print(i)
+    for i in range(0, time_res):
+        # Node Voltages
         for n in range(0, len(nodes_list)):
             C = find_C_value(nodes_list[n])
             G = find_G_value(nodes_list[n])
             H = find_H_value(nodes_list[n])
-            voltages[n, i+1] = ((C*voltages[n, i]/(1/time)) + H - currents[0, i]) / ((C/(1/time)) + G)
+            voltages[n, i+1] = ((C*voltages[n, i]/(1/time_res)) + H - currents[0, i]) / ((C/(1/time_res)) + G)
 
+        # Branch Currents
         for b in range(0, len(branches_list)):
             L = find_L_value(branches_list[b])
             R = find_R_value(branches_list[b])
-            currents[b, i+1] = currents[b, i] + (1/time)/L * (voltages[b, i+1] - voltages[b+1, i+1] - R*currents[b, i])
+            currents[b, i+1] = currents[b, i] + (1/time_res)/L * (voltages[b, i+1] - voltages[b+1, i+1] - R*currents[b, i])
 
+    print("--- %s seconds ---" % (time.time() - start_time))
     plt.plot(currents[0, :])
+    plt.title("Graph of Current")
+    plt.xlabel("Time Step")
+    plt.ylabel("Current (A)")
     plt.show()
     plt.plot(voltages[0, :])
+    plt.title("Graph of Voltage at Node i")
+    plt.xlabel("Time Step")
+    plt.ylabel("Voltage (V)")
     plt.show()
     plt.plot(voltages[1, :])
+    plt.title("Graph of Voltage at Node j")
+    plt.xlabel("Time Step")
+    plt.ylabel("Voltage (V)")
     plt.show()

@@ -3,6 +3,7 @@ from scipy.linalg import lu_factor, lu_solve
 import sys
 import matplotlib.pyplot as plt
 
+import time
 
 # TODO: Adding capacitor and inductors
 # Adding capacitor is bascially a resistor in parallel with a current source.
@@ -213,6 +214,7 @@ class Circuit:
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     node_amount = int(sys.argv[1])
     num_volt = int(sys.argv[2])
     # if(len(sys.argv) > 5):
@@ -425,8 +427,8 @@ if __name__ == "__main__":
             new_volt = solve_out[2][0]
             new_volt_2 = solve_out[3][0]
             new_volt_3 = solve_out[1][0]
-            print(solve_out)
-            print("=======")
+            # print(solve_out)
+            # print("=======")
             curr_val = float(prev_volt_1 - prev_volt_2)/(2*inductor_div_time)
             ind_curr.append(curr_val)
             voltages[inductor_current_index][3] = 2*inductor_div_time*curr_val + (prev_volt_3 - prev_volt_2)
@@ -442,6 +444,7 @@ if __name__ == "__main__":
             prev_volt_2 = new_volt_2
             prev_volt_3 = new_volt_3
         
+        print("--- %s seconds ---" % (time.time() - start_time))
         plt.plot(ind_curr)
         plt.show()
     else:
