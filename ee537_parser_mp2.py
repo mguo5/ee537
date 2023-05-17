@@ -282,6 +282,8 @@ if __name__ == "__main__":
                     voltages.append([element] + node_values + [v_scale])
                 elif element.startswith("V"):
                     voltages.append([element] + nodes_values + [element_value])
+                elif element.startswith("I") and len(parts) == 8:
+                    currents.append([element] + node_values + [v_scale])
                 elif element.startswith("I"):
                     currents.append([element] + nodes_values + [element_value])
                 elif element.startswith("G"):
@@ -301,8 +303,8 @@ if __name__ == "__main__":
                     inductor_div_time = float(element_value)/time_delta
                     node_amount = node_amount + 1
                     num_volt = num_volt + 1
-                    resistors.append([element] + [str(node_amount), nodes_values[1]] + [str(inductor_div_time)])
-                    voltages.append([element] + [nodes_values[0], str(node_amount)] + [0])
+                    resistors.append([element] + [str(node_amount), nodes_values[1]] + [str(2*inductor_div_time)])
+                    voltages.append([element] + [str(node_amount), nodes_values[0]] + [0])
                     inductor_current_index = len(voltages) - 1
                 elif element.startswith(".text"):
                     save_matrix_txt = True
@@ -386,6 +388,10 @@ if __name__ == "__main__":
 
     cap_volt = []
     ind_curr = []
+
+    prev_volt_1 = 0
+    prev_volt_2 = 0
+    prev_volt_3 = 0
     # For loop here
     if len(cap) > 0:
         for i in range(0, time_resolution):
@@ -416,15 +422,14 @@ if __name__ == "__main__":
         for i in range(0, time_resolution):
             rhs = c.return_rhs()
             solve_out = l.lu_solve_only(rhs)
-            print(solve_out)
-            print("=======")
             new_volt = solve_out[2][0]
             new_volt_2 = solve_out[3][0]
             new_volt_3 = solve_out[1][0]
-            curr_val = float(new_volt - new_volt_2)/(2*inductor_div_time)
+            print(solve_out)
+            print("=======")
+            curr_val = float(prev_volt_1 - prev_volt_2)/(2*inductor_div_time)
             ind_curr.append(curr_val)
-            # ind_curr.append(float(new_volt - new_volt_2))
-            voltages[inductor_current_index][3] = 2*inductor_div_time*curr_val + (new_volt_3)
+            voltages[inductor_current_index][3] = 2*inductor_div_time*curr_val + (prev_volt_3 - prev_volt_2)
             for v in voltages:
                 code = v[0]
                 np = int(v[1])
@@ -432,6 +437,10 @@ if __name__ == "__main__":
                 value = float(v[3])
 
                 c.independent_volt_update(code, np, nm, value)
+
+            prev_volt_1 = new_volt
+            prev_volt_2 = new_volt_2
+            prev_volt_3 = new_volt_3
         
         plt.plot(ind_curr)
         plt.show()
