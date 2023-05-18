@@ -209,7 +209,7 @@ class Circuit:
         self.rhs[j - 1][0] = -1*value
     
     def return_rhs(self):
-        print(self.rhs)
+        # print(self.rhs)
         return self.rhs
 
 
